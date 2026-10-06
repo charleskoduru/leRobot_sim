@@ -266,7 +266,9 @@ docker/compose.yaml
 ```bash
 cd ~/leRobot_sim/docker
 
-docker compose run --rm lerobot-so101-sapien
+xhost +local:docker
+
+docker compose run --rm lerobot-sim
 ```
 
 The `--rm` option automatically removes the temporary Compose container when it exits.
