@@ -227,7 +227,7 @@ telerobot
 
 Open the WebServer client and accept the permissions 
 
-(note in the process to troubleshoot recording episodes with depth frame)
+(Currently troubleshooting episode recording with depth frames)
 --- 
 
 
