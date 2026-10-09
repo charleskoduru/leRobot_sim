@@ -211,6 +211,19 @@ cd ~/leRobot_sim/docker
 docker compose run --rm lerobot-so101-sapien
 
 ```
+Inside the container: 
+
+```bash
+cd ~/telerobot
+
+git switch teleopSim
+
+git branch
+
+telerobot
+
+```
+ 
 
 Open the WebServer client and accept the permissions 
 
