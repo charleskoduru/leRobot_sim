@@ -1,0 +1,148 @@
+services:
+  lerobot-sim:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    image: lerobot-so101-sapien:local
+    container_name: lerobot-sim
+
+    # Keep host networking for WebXR / Quest / development servers.
+    network_mode: host
+
+    # Your existing setup uses the NVIDIA runtime successfully.
+    runtime: nvidia
+    privileged: true
+
+    # Keep this modest because the host has limited system RAM.
+    # This is the /dev/shm ceiling, not a reservation.
+    shm_size: "2gb"
+
+    stdin_open: true
+    tty: true
+
+    environment:
+      DISPLAY: ${DISPLAY}
+
+      ACCEPT_CLOUDXR_EULA: "Y"
+      PYTHONUNBUFFERED: "1"
+
+      HF_HOME: /workspace/.cache/huggingface
+      HF_LEROBOT_HOME: /workspace/.cache/lerobot
+
+      # Optional non-interactive Hugging Face auth.
+      # Export HF_TOKEN on the host or run `hf auth login` inside the container.
+      HF_TOKEN: ${HF_TOKEN:-}
+
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all
+
+      # Do not hard-code VK_ICD_FILENAMES here. Let NVIDIA Container Toolkit
+      # expose the host NVIDIA Vulkan ICD. Verify with `vulkaninfo --summary`.
+
+      XDG_RUNTIME_DIR: /tmp/runtime-root
+      QT_X11_NO_MITSHM: "1"
+
+      MUJOCO_GL: glfw
+      PYOPENGL_PLATFORM: glx
+      LIBGL_ALWAYS_INDIRECT: "0"
+      WGPU_BACKEND: gl
+
+    volumes:
+      ###################################################
+      # User workspace / simulation code
+      ###################################################
+      - ../workspace:/workspace/user
+      - ../simulation:/workspace/simulation
+      - ../assets:/workspace/assets
+      - ../datasets:/workspace/datasets
+
+      ###################################################
+      # Persistent Hugging Face + LeRobot cache/auth
+      ###################################################
+      - ../cache:/workspace/.cache
+
+      ###################################################
+      # SSL certificate used by telerobot/WebXR
+      ###################################################
+      - ../ssl_cert:/workspace/telerobot/ssl_cert
+
+      ###################################################
+      # Development repositories
+      # These override the copies cloned into the image.
+      ###################################################
+      - ../lerobot:/workspace/lerobot
+      - ../telerobot:/workspace/telerobot
+
+      ###################################################
+      # Intel RealSense USB access
+      ###################################################
+      - /dev/bus/usb:/dev/bus/usb
+
+      ###################################################
+      # X11 display
+      ###################################################
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+
+    devices:
+      ###################################################
+      # SO-101 follower
+      ###################################################
+      - /dev/ttyACM0:/dev/ttyACM0
+
+      ###################################################
+      # Existing OpenCV camera devices.
+      # RealSense through pyrealsense2 uses /dev/bus/usb above.
+      # Adjust/add /dev/video* entries if your indices change.
+      ###################################################
+      - /dev/video2:/dev/video2
+      - /dev/video3:/dev/video3
+
+    # These are redundant with privileged:true, but document the device
+    # classes needed by UVC/RealSense and ttyACM devices.
+    device_cgroup_rules:
+      - 'c 81:* rmw'   # video4linux
+      - 'c 189:* rmw'  # USB
+      - 'c 166:* rmw'  # ttyACM
+
+    working_dir: /workspace
+
+    command:
+      - /bin/bash
+      - -c
+      - |
+          set -e
+
+          echo "Checking SSL certificate..."
+          mkdir -p /workspace/telerobot/ssl_cert
+          mkdir -p /workspace/simulation /workspace/assets /workspace/datasets /workspace/user
+          mkdir -p /tmp/runtime-root
+          chmod 700 /tmp/runtime-root
+
+          if [ ! -f /workspace/telerobot/ssl_cert/server.crt ] || \
+             [ ! -f /workspace/telerobot/ssl_cert/server.key ]; then
+
+            echo "SSL certificate not found. Creating one..."
+
+            openssl req \
+              -x509 \
+              -newkey rsa:4096 \
+              -keyout /workspace/telerobot/ssl_cert/server.key \
+              -out /workspace/telerobot/ssl_cert/server.crt \
+              -days 365 \
+              -nodes \
+              -subj "/CN=localhost"
+
+            echo "SSL certificate created."
+          else
+            echo "SSL certificate already exists."
+          fi
+
+          echo
+          echo "SO-101 SAPIEN/ManiSkill container ready."
+          echo "GPU check: nvidia-smi"
+          echo "Vulkan check: vulkaninfo --summary"
+          echo "HF login: hf auth login"
+          echo
+
+          exec /bin/bash
