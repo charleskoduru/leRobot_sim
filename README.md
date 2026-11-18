@@ -4,6 +4,12 @@ Docker environment for controlling an SO-101 follower robot using simulation wit
 
 ---
 
+#Video
+
+[Watch the xArm6 simulation demo](https://canva.link/rmd4gghv7evjiyv)
+
+[Watch the SO1010 simulation demo](https://canva.link/purzspssoppf7lc)
+
 # System Overview
 
 This environment supports:
