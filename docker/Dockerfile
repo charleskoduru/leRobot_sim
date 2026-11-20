@@ -1,4 +1,4 @@
-# SO-101 + LeRobot + SAPIEN/ManiSkill + RealSense RGB-D
+# SO101 / xArm6 + Robotiq 2F-85 + GELLO + SAPIEN RGB-D
 # Base: Ubuntu 22.04 / CUDA 12.8 runtime
 FROM nvidia/cuda:12.8.1-runtime-ubuntu22.04
 
@@ -72,13 +72,13 @@ WORKDIR /workspace
 
 ############################################################
 # Clone repositories into the image.
-# compose.yaml can bind-mount your local repos over these at runtime.
+# Compose can mount local repositories over these at runtime.
 ############################################################
 RUN git clone \
     https://github.com/charleskoduru/lerobot_ik_fk.git \
     /workspace/lerobot
 
-RUN git clone \
+RUN git clone --branch teleopSim \
     https://github.com/charleskoduru/telerobot.git \
     /workspace/telerobot
 
@@ -89,9 +89,9 @@ RUN uv venv --python 3.12 /workspace/.venv
 
 ############################################################
 # PyTorch CUDA 12.8
-# Install explicitly so ManiSkill and LeRobot share one CUDA-enabled torch.
 ############################################################
 ARG PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cu128
+
 RUN uv pip install --no-cache \
     --index-url "${PYTORCH_INDEX_URL}" \
     torch \
@@ -106,12 +106,12 @@ RUN uv pip install --no-cache \
     -e ".[feetech,kinematics,dataset,viz]" \
     "huggingface_hub>=1.5"
 
-# Keep compatibility with the user's existing LeRobot setup.
-RUN uv pip install --no-cache --force-reinstall draccus==0.10.0
+RUN uv pip install --no-cache \
+    --force-reinstall \
+    draccus==0.10.0
 
 ############################################################
 # SAPIEN + ManiSkill
-# ManiSkill is the high-level environment layer; SAPIEN provides physics/rendering.
 ############################################################
 RUN uv pip install --no-cache \
     "sapien==3.0.3" \
@@ -144,29 +144,30 @@ RUN uv pip install --no-cache \
 # Telerobot
 ############################################################
 WORKDIR /workspace/telerobot
+
 RUN uv pip install --no-cache -e .
 
 ############################################################
-# Vulkan / NVIDIA
-# IMPORTANT:
-# Do NOT write a fake NVIDIA Vulkan ICD JSON into the image.
-# At runtime, nvidia-container-toolkit + NVIDIA_DRIVER_CAPABILITIES=all
-# should mount the host NVIDIA userspace driver and Vulkan ICD.
+# GELLO USB leader dependencies
+# Installed directly; no requirements-gello.txt needed.
 ############################################################
-RUN mkdir -p /tmp/runtime-root \
+RUN uv pip install \
+    --python /workspace/.venv/bin/python \
+    --no-cache \
+    "dynamixel-sdk==3.7.31" \
+    "pyserial>=3.5,<4"
+
+############################################################
+# Runtime directories
+# NVIDIA Vulkan drivers are supplied by the host at runtime.
+############################################################
+RUN mkdir -p \
+    /tmp/runtime-root \
     /workspace/simulation \
     /workspace/assets \
     /workspace/datasets \
     /workspace/user \
     && chmod 700 /tmp/runtime-root
-
-############################################################
-# Runtime validation
-# After the container starts, validate with:
-#   nvidia-smi
-#   vulkaninfo --summary
-#   python -c "import torch, sapien, mani_skill, pyrealsense2, lerobot; print(torch.cuda.is_available())"
-############################################################
 
 ############################################################
 # Gnirehtet for Quest networking
@@ -178,14 +179,18 @@ RUN wget -q \
     -O /tmp/gnirehtet.zip \
     && unzip /tmp/gnirehtet.zip -d /opt/gnirehtet \
     && chmod +x /opt/gnirehtet/gnirehtet-rust-linux64/gnirehtet \
-    && ln -s /opt/gnirehtet/gnirehtet-rust-linux64/gnirehtet /usr/local/bin/gnirehtet \
+    && ln -s \
+        /opt/gnirehtet/gnirehtet-rust-linux64/gnirehtet \
+        /usr/local/bin/gnirehtet \
     && rm /tmp/gnirehtet.zip
 
 ############################################################
-# Preserve existing Quest/LeRobot helper scripts
+# Quest/LeRobot helper scripts
 ############################################################
 COPY scripts /usr/local/bin/quest-lerobot-scripts
+
 RUN chmod +x /usr/local/bin/quest-lerobot-scripts/*.sh
 
 WORKDIR /workspace
+
 CMD ["/bin/bash"]
