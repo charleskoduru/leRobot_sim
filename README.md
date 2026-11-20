@@ -214,6 +214,8 @@ After first-time setup, this is the normal workflow.
 ```bash
 cd ~/leRobot_sim/docker
 
+xhost +local:docker
+
 docker compose run --rm lerobot-so101-sapien
 
 ```
