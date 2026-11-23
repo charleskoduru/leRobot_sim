@@ -180,7 +180,7 @@ cd ~/telerobot
 
 git switch teleopSim
 
-teleop
+telerobot
 ```
 
 Open the WebServer client and accept the permissions 
