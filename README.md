@@ -172,7 +172,22 @@ xhost +local:docker
 docker compose run --rm lerobot-sim
 ```
 
-The `--rm` option automatically removes the temporary Compose container when it exits.
+```
+Inside the container: 
+
+```bash
+cd ~/telerobot
+
+git switch teleopSim
+
+teleop
+```
+
+Open the WebServer client and accept the permissions 
+
+
+
+# Troubleshooting: 
 
 Inside the container, verify the GPU:
 
@@ -194,46 +209,6 @@ ls /workspace/telerobot
 ```
 
 These directories should contain the host repositories mounted by Docker Compose.
-
----
-## Setup Hugging face
-```bash
-hf auth login
-```
-Follow the directions. 
-Note: stores its credentials under HF_HOME, which is inside /workspace/.cache, and that directory is mounted to your host. So you only need to do this once. 
-
----
-
-# 4. Normal Startup
-
-After first-time setup, this is the normal workflow.
-
-## Step 1 - Start Docker
-
-```bash
-cd ~/leRobot_sim/docker
-
-xhost +local:docker
-
-docker compose run --rm lerobot-so101-sapien
-
-```
-Inside the container: 
-
-```bash
-cd ~/telerobot
-
-git switch teleopSim
-
-git branch
-
-telerobot
-
-```
- 
-
-Open the WebServer client and accept the permissions 
 
 (Currently troubleshooting episode recording with depth frames)
 --- 
